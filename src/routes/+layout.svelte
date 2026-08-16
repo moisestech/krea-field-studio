@@ -7,6 +7,13 @@
   <title>Krea Field Studio — unofficial proof of work</title>
   <meta name="description" content="Unofficial Krea-powered field workflow: brief to approved proposal and product field note. Not affiliated with Krea." />
   <meta name="robots" content="index,follow" />
+  <meta property="og:title" content="Krea Field Studio — unofficial proof of work" />
+  <meta property="og:description" content="Replay-first client workflow: brief, three lanes, human approval, inspectable jobs, proposal, field note." />
+  <meta property="og:image" content="https://krea-field-studio.vercel.app/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://krea-field-studio.vercel.app/og.png" />
 </svelte:head>
 
 <div class="shell">
