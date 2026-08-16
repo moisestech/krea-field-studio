@@ -26,8 +26,8 @@ Replay compare view (Playwright, no credentials):
 | Run trace               | `/trace/replay-price-of-existence`    | None        |
 | Live                    | server-only `KREA_API_KEY`            | Gated       |
 
-Live demo (when deployed): `https://field-studio.moises.tech`  
-Replay is the public path. Live spend is off until API balance is confirmed.
+Live demo: [`https://krea-field-studio.vercel.app`](https://krea-field-studio.vercel.app)  
+Custom domain `field-studio.moises.tech` is attached on Vercel. Replay is the public path. Live spend is off until API balance is confirmed.
 
 ## What this proves for Krea
 
