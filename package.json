@@ -11,6 +11,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "playwright test",
+    "live:plan": "tsx src/lib/live/cli.ts plan",
+    "live:record": "tsx src/lib/live/cli.ts record",
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
@@ -31,6 +33,7 @@
     "prettier": "^3.6.2",
     "svelte": "^5.38.1",
     "svelte-check": "^4.3.1",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.2",
     "vitest": "^3.2.4"

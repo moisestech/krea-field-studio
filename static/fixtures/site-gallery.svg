@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="t d">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="t d">
   <title id="t">Synthetic white-cube gallery</title>
   <desc id="d">Line drawing of an empty rectangular gallery bay with track lighting. Synthetic fixture, not a surveyed venue.</desc>
   <rect width="1600" height="900" fill="#E8E4D8"/>
@@ -19,5 +20,5 @@
     <circle cx="1120" cy="95" r="6"/>
     <circle cx="1400" cy="95" r="6"/>
   </g>
-  <text x="100" y="870" font-family="ui-monospace, monospace" font-size="22" fill="#151515">FIXTURE SITE · synthetic gallery · not CAD</text>
+  <text x="100" y="870" font-family="ui-monospace, monospace" font-size="22" fill="#151515">FIXTURE SITE / synthetic gallery / not CAD</text>
 </svg>
