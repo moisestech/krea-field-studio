@@ -1,0 +1,11 @@
+package-lock.json
+.svelte-kit
+build
+.vercel
+node_modules
+static
+docs/assets/*.png
+playwright-report
+test-results
+coverage
+drizzle

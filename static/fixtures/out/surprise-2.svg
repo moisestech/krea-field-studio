@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img">
+  <rect width="1600" height="900" fill="#F2F0E9"/>
+  <rect x="70" y="70" width="1460" height="700" fill="#F2F0E9" stroke="#151515" stroke-width="3"/>
+  <rect x="70" y="700" width="1460" height="70" fill="#C9C6BC"/>
+  <rect x="180" y="210" width="280" height="490" fill="#B9E8C0" stroke="#151515" stroke-width="2"/>
+  <circle cx="320" cy="250" r="38" fill="#F2F0E9" stroke="#151515"/>
+  <rect x="250" y="300" width="140" height="280" fill="#F2F0E9" stroke="#151515"/>
+  <text x="90" y="50" font-family="ui-monospace,monospace" font-size="22" fill="#151515">REPLAY · surprise-b</text>
+  <text x="90" y="840" font-family="Georgia,serif" font-size="36" fill="#151515">Surprise B — mural</text>
+  <text x="90" y="875" font-family="ui-monospace,monospace" font-size="18" fill="#151515">One departure: faint wall mural</text>
+</svg>

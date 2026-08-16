@@ -1,0 +1,20 @@
+{
+  "_source": "https://docs.krea.ai/api-reference/krea/krea-2-medium",
+  "_note": "Redacted example matching the public OpenAPI. No secrets.",
+  "prompt": "Exhibition previz: keep the white-cube gallery architecture and place the sculptural figure at human scale on the left wall bay. Museum lighting, no logos.",
+  "aspect_ratio": "16:9",
+  "resolution": "1K",
+  "creativity": "raw",
+  "image_url": "https://example.invalid/site.jpg",
+  "strength": 0.35,
+  "image_style_references": [
+    {
+      "url": "https://example.invalid/artwork.jpg",
+      "strength": 0.7
+    }
+  ],
+  "intensity": 0,
+  "complexity": 0,
+  "movement": 0,
+  "seed": 2401
+}

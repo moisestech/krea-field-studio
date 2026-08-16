@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: field
+      POSTGRES_PASSWORD: field
+      POSTGRES_DB: field_studio
+    ports:
+      - "5432:5432"
+    volumes:
+      - field_pg:/var/lib/postgresql/data
+
+volumes:
+  field_pg:

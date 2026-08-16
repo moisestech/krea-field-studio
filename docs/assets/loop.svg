@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" role="img" aria-labelledby="t">
+  <title id="t">Field Studio loop: brief, lanes, approval, jobs, compare, field note</title>
+  <rect width="1200" height="280" fill="#F2F0E9"/>
+  <g font-family="ui-monospace, monospace" font-size="18" fill="#151515">
+    <rect x="20" y="90" width="170" height="80" fill="#B9E8C0" stroke="#151515"/>
+    <text x="40" y="138">Brief</text>
+    <rect x="220" y="90" width="170" height="80" fill="#7FA8FF" stroke="#151515"/>
+    <text x="250" y="138">3 lanes</text>
+    <rect x="420" y="90" width="170" height="80" fill="#FF6B5E" stroke="#151515"/>
+    <text x="445" y="138">Approve</text>
+    <rect x="620" y="90" width="170" height="80" fill="#F2F0E9" stroke="#151515"/>
+    <text x="665" y="138">Jobs</text>
+    <rect x="820" y="90" width="170" height="80" fill="#F2F0E9" stroke="#151515"/>
+    <text x="845" y="138">Compare</text>
+    <rect x="1020" y="90" width="160" height="80" fill="#F2F0E9" stroke="#151515"/>
+    <text x="1035" y="138">Field note</text>
+  </g>
+  <text x="20" y="40" font-family="Georgia, serif" font-size="28" fill="#151515">Krea Field Studio  unofficial loop</text>
+  <text x="20" y="250" font-family="ui-monospace, monospace" font-size="14" fill="#151515">UNOFFICIAL PROOF OF WORK · not endorsed by Krea</text>
+</svg>

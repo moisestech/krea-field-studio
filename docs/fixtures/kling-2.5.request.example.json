@@ -1,0 +1,8 @@
+{
+  "_source": "https://docs.krea.ai/api-reference/video/kling-25",
+  "_note": "Redacted example matching the public OpenAPI. No secrets.",
+  "prompt": "Slow lateral dolly, subtle parallax on the gallery walls, artwork remains still, museum-quiet motion.",
+  "start_image": "https://example.invalid/approved-still.jpg",
+  "aspect_ratio": "16:9",
+  "duration": 5
+}
