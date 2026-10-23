@@ -5,7 +5,11 @@ import {
   type ProjectSnapshot,
   type ProjectStatus,
 } from "../domain/types";
-import type { GenerationJob, KreaJobState, WebhookReceipt } from "../domain/types";
+import type {
+  GenerationJob,
+  KreaJobState,
+  WebhookReceipt,
+} from "../domain/types";
 import { buildReplaySnapshot } from "../fixtures/replay";
 import { FixtureGenerationProvider } from "../providers/fixture";
 import {
@@ -19,7 +23,10 @@ import { krea2MediumRequestSchema } from "../domain/schemas";
 
 const snapshots = new Map<string, ProjectSnapshot>();
 const providers = new Map<string, GenerationProvider>();
-const FIXED_REPLAY_IDS = new Set(["replay-price-of-existence", "replay-failure"]);
+const FIXED_REPLAY_IDS = new Set([
+  "replay-price-of-existence",
+  "replay-failure",
+]);
 const MAX_EPHEMERAL_SESSIONS = 100;
 const STATE_RANK: Record<KreaJobState, number> = {
   backlogged: 0,
@@ -49,7 +56,9 @@ function getRequiredSnapshot(projectId: string): ProjectSnapshot {
   const snap = snapshots.get(projectId);
   if (!snap) throw new Error("Unknown project");
   if (snap.project.mode === "live") {
-    throw new Error("Live projects are not available through public demo routes.");
+    throw new Error(
+      "Live projects are not available through public demo routes.",
+    );
   }
   return snap;
 }
@@ -61,9 +70,15 @@ function rekeySnapshot(
 ): void {
   snap.project.id = projectId;
   snap.project.mode = mode;
-  if (mode === "failure") snap.project.title = "Mock failure — recovery behavior";
+  if (mode === "failure")
+    snap.project.title = "Mock failure — recovery behavior";
   snap.brief.projectId = projectId;
-  for (const item of [...snap.assets, ...snap.directions, ...snap.jobs, ...snap.approvals]) {
+  for (const item of [
+    ...snap.assets,
+    ...snap.directions,
+    ...snap.jobs,
+    ...snap.approvals,
+  ]) {
     item.projectId = projectId;
   }
 }
@@ -72,7 +87,10 @@ function pruneReplaySessions(): void {
   const ephemeral = [...snapshots.values()]
     .filter((snap) => !FIXED_REPLAY_IDS.has(snap.project.id))
     .sort((a, b) => a.project.updatedAt.localeCompare(b.project.updatedAt));
-  for (const snap of ephemeral.slice(0, Math.max(0, ephemeral.length - MAX_EPHEMERAL_SESSIONS))) {
+  for (const snap of ephemeral.slice(
+    0,
+    Math.max(0, ephemeral.length - MAX_EPHEMERAL_SESSIONS),
+  )) {
     snapshots.delete(snap.project.id);
     providers.delete(snap.project.id);
   }
@@ -88,14 +106,18 @@ export function listSnapshots(): ProjectSnapshot[] {
 
 export function seedReplay(
   mode: "replay" | "failure" = "replay",
-  projectId = mode === "failure" ? "replay-failure" : "replay-price-of-existence",
+  projectId = mode === "failure"
+    ? "replay-failure"
+    : "replay-price-of-existence",
 ): ProjectSnapshot {
   const snap = buildReplaySnapshot();
   rekeySnapshot(snap, projectId, mode);
   snapshots.set(projectId, snap);
   providers.set(
     projectId,
-    new FixtureGenerationProvider(mode === "failure" ? { failureJobIndex: 2 } : {}),
+    new FixtureGenerationProvider(
+      mode === "failure" ? { failureJobIndex: 2 } : {},
+    ),
   );
   pruneReplaySessions();
   return clone(snap);
@@ -110,7 +132,10 @@ export function createReplaySession(
 
 export function resetReplay(projectId: string): ProjectSnapshot {
   const snap = getRequiredSnapshot(projectId);
-  return seedReplay(snap.project.mode === "failure" ? "failure" : "replay", projectId);
+  return seedReplay(
+    snap.project.mode === "failure" ? "failure" : "replay",
+    projectId,
+  );
 }
 
 export function ensureSeeds(): void {
@@ -143,12 +168,15 @@ export function approvePlan(projectId: string, note: string): ProjectSnapshot {
     note,
     createdAt: new Date().toISOString(),
   });
-  for (const d of snap.directions.slice(0, 6)) d.status = "approved_for_generation";
+  for (const d of snap.directions.slice(0, 6))
+    d.status = "approved_for_generation";
   touch(snap, "generating");
   return clone(snap);
 }
 
-export async function submitApprovedDirections(projectId: string): Promise<ProjectSnapshot> {
+export async function submitApprovedDirections(
+  projectId: string,
+): Promise<ProjectSnapshot> {
   const snap = getRequiredSnapshot(projectId);
   const plan = snap.approvals.find(
     (a) => a.subjectType === "plan" && a.decision === "approve",
@@ -170,7 +198,8 @@ export async function submitApprovedDirections(projectId: string): Promise<Proje
     });
     const artwork = snap.assets.find((a) => a.kind === "artwork");
     const site = snap.assets.find((a) => a.kind === "site");
-    if (site) params.image_url = site.url.startsWith("http") ? site.url : undefined;
+    if (site)
+      params.image_url = site.url.startsWith("http") ? site.url : undefined;
     if (artwork?.url.startsWith("http")) {
       params.image_style_references = [{ url: artwork.url, strength: 0.62 }];
     }
@@ -232,7 +261,10 @@ export async function pollJobs(projectId: string): Promise<ProjectSnapshot> {
   return clone(snap);
 }
 
-export async function cancelJob(projectId: string, jobId: string): Promise<ProjectSnapshot> {
+export async function cancelJob(
+  projectId: string,
+  jobId: string,
+): Promise<ProjectSnapshot> {
   const snap = getRequiredSnapshot(projectId);
   const job = snap.jobs.find((j) => j.id === jobId);
   if (!job) throw new Error("Unknown job");
@@ -254,7 +286,11 @@ export function selectDirection(
   }
   const selected = snap.directions.find((d) => d.id === directionId);
   const selectedJob = snap.jobs.find((j) => j.directionId === directionId);
-  if (!selected || selected.status !== "generated" || selectedJob?.providerStatus !== "completed") {
+  if (
+    !selected ||
+    selected.status !== "generated" ||
+    selectedJob?.providerStatus !== "completed"
+  ) {
     throw new Error("Select a completed generated direction.");
   }
   for (const d of snap.directions) {
@@ -306,7 +342,8 @@ export async function submitRefinements(
       projectId,
       lane: selected.lane,
       label: "Refinement " + (i + 1),
-      rationale: "Bounded change on the approved still. Operator-authored, not auto-ranked.",
+      rationale:
+        "Bounded change on the approved still. Operator-authored, not auto-ranked.",
       prompt,
       modelId: IMAGE_MODEL,
       parametersJson: params,
@@ -397,7 +434,10 @@ export async function submitMotion(
 
 export function saveFieldNote(
   projectId: string,
-  note: Omit<NonNullable<ProjectSnapshot["fieldNote"]>, "projectId" | "createdAt">,
+  note: Omit<
+    NonNullable<ProjectSnapshot["fieldNote"]>,
+    "projectId" | "createdAt"
+  >,
 ): ProjectSnapshot {
   const snap = getRequiredSnapshot(projectId);
   if (!["approved", "exported"].includes(snap.project.status)) {
