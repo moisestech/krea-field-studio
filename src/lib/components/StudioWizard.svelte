@@ -1,27 +1,30 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { ProjectSnapshot } from '$lib/domain/types';
   import { ARTWORK_ALT, LANE_COPY, UNOFFICIAL } from '$lib/fixtures/constants';
   import { uiGroupFor } from '$lib/domain/types';
 
   type Step = 'brief' | 'plan' | 'approve' | 'jobs' | 'compare' | 'refine' | 'proposal' | 'note';
-
   let { initial }: { initial: ProjectSnapshot } = $props();
   let snap = $state(initial);
   let step = $state<Step>('brief');
   let busy = $state(false);
   let errorMsg = $state('');
   let selectedIndex = $state(0);
-  let noteFriction = $state(
-    'The client understood the outputs but could not tell which parts of the site image the workflow was intended to preserve.'
-  );
+  let noteFriction = $state('');
+  let polling = false;
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
   const id = $derived(snap.project.id);
   const mode = $derived(snap.project.mode.toUpperCase());
-  const initialDirs = $derived(
-    snap.directions.filter((d) => !d.id.includes('refine') && d.id !== 'dir-motion')
-  );
-  const generated = $derived(initialDirs.filter((d) => d.status === 'generated' || d.status === 'selected' || d.status === 'rejected'));
+  const initialDirs = $derived(snap.directions.filter((d) => !d.id.includes('refine') && d.id !== 'dir-motion'));
+  const generated = $derived(initialDirs.filter((d) => ['generated', 'selected', 'rejected'].includes(d.status)));
 
-  async function api(path: string, body?: unknown) {
+  onDestroy(() => {
+    polling = false;
+    if (pollTimer) clearTimeout(pollTimer);
+  });
+
+  async function api(path: string, body?: unknown): Promise<boolean> {
     busy = true;
     errorMsg = '';
     try {
@@ -32,28 +35,47 @@
       });
       if (!res.ok) throw new Error(await res.text());
       snap = await res.json();
+      return true;
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : 'Request failed';
+      return false;
     } finally {
       busy = false;
     }
   }
 
+  function delay(ms: number) {
+    return new Promise<void>((resolve) => {
+      pollTimer = setTimeout(resolve, ms);
+    });
+  }
+
+  async function pollUntil(done: () => boolean, next: Step) {
+    polling = true;
+    while (polling) {
+      await delay(2000);
+      if (!polling) return;
+      if (!(await api('/api/projects/' + id + '/poll'))) {
+        polling = false;
+        return;
+      }
+      if (done()) {
+        polling = false;
+        step = next;
+      }
+    }
+  }
+
   async function startJobs() {
-    await api(`/api/projects/${id}/approve`, {
+    const ok = await api('/api/projects/' + id + '/approve', {
       note: 'Approved six directions across three lanes. No auto-ranking.'
     });
+    if (!ok) return;
     step = 'jobs';
-    const timer = setInterval(async () => {
-      await api(`/api/projects/${id}/poll`);
-      const pending = snap.jobs.some(
-        (j) => !['completed', 'failed', 'cancelled'].includes(j.providerStatus)
-      );
-      if (!pending) {
-        clearInterval(timer);
-        step = 'compare';
-      }
-    }, 700);
+    void pollUntil(
+      () => snap.jobs.length > 0 && snap.jobs.every((j) => ['completed', 'failed', 'cancelled'].includes(j.providerStatus)),
+      'compare'
+    );
   }
 
   function jobFor(directionId: string) {
@@ -61,54 +83,54 @@
   }
 
   async function choose(directionId: string) {
-    await api(`/api/projects/${id}/select`, {
+    const ok = await api('/api/projects/' + id + '/select', {
       directionId,
       note: 'Human selection in compare view. No model score.'
     });
-    step = 'refine';
+    if (ok) step = 'refine';
   }
 
   async function refine() {
-    await api(`/api/projects/${id}/refine`);
-    const timer = setInterval(async () => {
-      await api(`/api/projects/${id}/poll`);
-      const refs = snap.directions.filter((d) => d.id.startsWith('dir-refine'));
-      const done = refs.every((d) => {
-        const j = jobFor(d.id);
-        return j && ['completed', 'failed', 'cancelled'].includes(j.providerStatus);
-      });
-      if (refs.length && done) {
-        clearInterval(timer);
-        step = 'proposal';
-      }
-    }, 700);
+    if (!(await api('/api/projects/' + id + '/refine'))) return;
     step = 'jobs';
+    void pollUntil(() => {
+      const refs = snap.directions.filter((d) => d.id.startsWith('dir-refine'));
+      return refs.length > 0 && refs.every((d) => {
+        const job = jobFor(d.id);
+        return job && ['completed', 'failed', 'cancelled'].includes(job.providerStatus);
+      });
+    }, 'proposal');
   }
 
-  async function motion() {
-    await api(`/api/projects/${id}/motion`);
-    await api(`/api/projects/${id}/poll`);
+  async function reset() {
+    polling = false;
+    if (pollTimer) clearTimeout(pollTimer);
+    if (await api('/api/projects/' + id + '/reset')) {
+      selectedIndex = 0;
+      noteFriction = '';
+      step = 'brief';
+    }
   }
 
   async function saveNote() {
-    await api(`/api/projects/${id}/note`, {
+    if (!noteFriction.trim()) {
+      errorMsg = 'Write an observed friction point before exporting.';
+      return;
+    }
+    const ok = await api('/api/projects/' + id + '/note', {
       clientGoal: snap.brief.goal,
       workflowObserved: 'Brief → three lanes → approval → six jobs → compare → refine → proposal.',
       workedWell: [
         'Lane labels made the six stills scannable.',
         'Exact provider states stayed visible next to grouped UI labels.'
       ],
-      friction: [noteFriction],
-      failureReproduction: [
-        'Upload site image → choose Material Transformation → submit two variants → compare.'
-      ],
-      productOpportunity: [
-        'Make preservation constraints visible at generation time and carry them into comparison annotations.'
-      ],
-      evidenceLinks: [`/trace/${id}`, `/proposal/${id}`],
+      friction: [noteFriction.trim()],
+      failureReproduction: ['Choose Material Transformation → submit two variants → compare.'],
+      productOpportunity: ['Carry preservation constraints into comparison annotations.'],
+      evidenceLinks: ['/trace/' + id, '/proposal/' + id],
       author: 'Moises Sanabria'
     });
-    step = 'note';
+    if (ok) step = 'note';
   }
 
   function onKey(e: KeyboardEvent) {
@@ -121,15 +143,18 @@
 
 <svelte:window onkeydown={onKey} />
 
-<p class="mode" data-mode={snap.project.mode}>{mode}</p>
-<p class="unofficial">{UNOFFICIAL}</p>
+<div class="statusbar">
+  <div>
+    <p class="mode" data-mode={snap.project.mode}>{mode}</p>
+    <p class="unofficial">{UNOFFICIAL}</p>
+  </div>
+  <button class="reset" disabled={busy} onclick={reset}>Reset this replay</button>
+</div>
 {#if errorMsg}<p class="err" role="alert">{errorMsg}</p>{/if}
 
-<ol class="steps" aria-label="Workflow steps">
+<ol class="steps" aria-label="Workflow progress">
   {#each ['brief', 'plan', 'approve', 'jobs', 'compare', 'refine', 'proposal', 'note'] as s}
-    <li>
-      <button class:on={step === s} onclick={() => (step = s as Step)}>{s}</button>
-    </li>
+    <li class:on={step === s}>{s}</li>
   {/each}
 </ol>
 
@@ -167,11 +192,7 @@
           <p class="not">{copy.not}</p>
           <ol>
             {#each initialDirs.filter((d) => d.lane === key) as d}
-              <li>
-                <strong>{d.label}</strong>
-                <span class="mono">{d.modelId}</span>
-                <p>{d.prompt}</p>
-              </li>
+              <li><strong>{d.label}</strong><span class="mono">{d.modelId}</span><p>{d.prompt}</p></li>
             {/each}
           </ol>
         </article>
@@ -185,9 +206,9 @@
 {#if step === 'approve'}
   <section>
     <h1>Approval gate</h1>
-    <p>No generation before an explicit human yes. Replay spends no credits. Live mode would show the exact Krea 2 Medium payload here.</p>
+    <p>No generation before an explicit human yes. Replay spends no credits. Public live execution is intentionally unavailable.</p>
     <dl class="payload">
-      <dt>Model</dt><dd class="mono">image/krea/krea-2/medium</dd>
+      <dt>Model contract</dt><dd class="mono">image/krea/krea-2/medium</dd>
       <dt>Requests</dt><dd>6 image jobs</dd>
       <dt>Aspect / resolution</dt><dd class="mono">16:9 · 1K</dd>
       <dt>Mode</dt><dd>{mode}</dd>
@@ -198,23 +219,17 @@
 
 {#if step === 'jobs'}
   <section>
-    <h1>Live jobs</h1>
-    <p>Grouped for scanning; exact Krea states stay inspectable.</p>
+    <h1>Generation jobs</h1>
+    <p>Grouped for scanning; exact provider states stay inspectable. Polling is serial and stops at terminal states.</p>
     <ul class="jobs">
       {#each snap.jobs as job}
         {@const dir = snap.directions.find((d) => d.id === job.directionId)}
         <li>
-          <header>
-            <strong>{dir?.label ?? job.directionId}</strong>
-            <span class="pill">{uiGroupFor(job.providerStatus)}</span>
-            <code>{job.providerStatus}</code>
-          </header>
+          <header><strong>{dir?.label ?? job.directionId}</strong><span class="pill">{uiGroupFor(job.providerStatus)}</span><code>{job.providerStatus}</code></header>
           <p class="mono">{job.providerJobId} · attempt {job.attempt}</p>
           {#if job.errorMessage}<p class="err">{job.errorMessage}</p>{/if}
           {#if job.providerStatus === 'queued' || job.providerStatus === 'processing'}
-            <button
-              onclick={() => api(`/api/projects/${id}/jobs/${job.id}/cancel`)}
-            >Cancel</button>
+            <button onclick={() => api('/api/projects/' + id + '/jobs/' + job.id + '/cancel')}>Cancel</button>
           {/if}
         </li>
       {/each}
@@ -229,25 +244,14 @@
     <div class="sheet" role="listbox" aria-label="Direction contact sheet">
       {#each generated as d, i}
         {@const job = jobFor(d.id)}
-        <button
-          class="tile"
-          class:sel={i === selectedIndex}
-          role="option"
-          aria-selected={i === selectedIndex}
-          onclick={() => (selectedIndex = i)}
-          ondblclick={() => choose(d.id)}
-        >
+        <button class="tile" class:sel={i === selectedIndex} role="option" aria-selected={i === selectedIndex} onclick={() => (selectedIndex = i)} ondblclick={() => choose(d.id)}>
           <img src={job?.resultUrls[0] ?? '/fixtures/site-gallery.svg'} alt={d.label} />
-          <span>{d.label}</span>
-          <code>{job?.providerStatus}</code>
+          <span>{d.label}</span><code>{job?.providerStatus}</code>
         </button>
       {/each}
     </div>
     {#if generated[selectedIndex]}
-      <button class="primary" onclick={() => choose(generated[selectedIndex].id)}>
-        Approve {generated[selectedIndex].label}
-      </button>
-      <button class="ghost" onclick={() => (step = 'refine')}>Continue to refinements</button>
+      <button class="primary" onclick={() => choose(generated[selectedIndex].id)}>Approve {generated[selectedIndex].label}</button>
     {/if}
   </section>
 {/if}
@@ -257,7 +261,7 @@
     <h1>Refine the approved still</h1>
     <p>Up to three bounded variants. Operator writes the change; the model does not pick a winner.</p>
     <button class="primary" disabled={busy} onclick={refine}>Generate three refinements</button>
-    <button class="ghost" onclick={motion}>Optional motion study</button>
+    <button class="ghost" disabled={busy} onclick={() => api('/api/projects/' + id + '/motion', { approved: true })}>Approve one 5s motion study</button>
     <button class="ghost" onclick={() => (step = 'proposal')}>Skip to proposal</button>
   </section>
 {/if}
@@ -275,69 +279,38 @@
   <section>
     <h1>Operator field note</h1>
     <p>Written by a person. Not auto-generated customer truth.</p>
-    <label>
-      Observed friction
-      <textarea bind:value={noteFriction} rows="4"></textarea>
+    <label>Observed friction
+      <textarea bind:value={noteFriction} rows="4" placeholder="Record something you actually observed during this run."></textarea>
     </label>
-    <button class="primary" onclick={saveNote}>Save field note and export</button>
-    {#if snap.fieldNote}
-      <p class="ok">Saved. Status: {snap.project.status}</p>
-    {/if}
+    <button class="primary" disabled={!noteFriction.trim() || busy} onclick={saveNote}>Save field note and export</button>
+    {#if snap.fieldNote}<p class="ok">Saved. Status: {snap.project.status}</p>{/if}
   </section>
 {/if}
 
 <style>
-  .mode {
-    font-family: var(--mono);
-    letter-spacing: 0.12em;
-    color: var(--coral);
-    margin: 0 0 0.25rem;
-  }
+  .statusbar { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+  .mode { font-family: var(--mono); letter-spacing: 0.12em; color: var(--coral); margin: 0 0 0.25rem; }
   .unofficial { color: #555; font-size: 0.9rem; }
+  .reset { background: transparent; border: 1px solid var(--line); padding: 0.45rem 0.65rem; }
   .err { color: #9b1c1c; }
   .ok { background: var(--mint); padding: 0.5rem 0.75rem; }
   .lede { font-size: 1.15rem; max-width: 44rem; }
-  .steps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    list-style: none;
-    padding: 0;
-  }
-  .steps button {
-    border: 1px solid var(--line);
-    background: transparent;
-    padding: 0.25rem 0.55rem;
-    text-transform: capitalize;
-  }
-  .steps .on { background: var(--ink); color: var(--paper); }
-  .pair, .lanes, .sheet {
-    display: grid;
-    gap: 1rem;
-  }
+  .steps { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; padding: 0; }
+  .steps li { border: 1px solid var(--line); padding: 0.25rem 0.55rem; text-transform: capitalize; }
+  .steps li.on { background: var(--ink); color: var(--paper); }
+  .pair, .lanes, .sheet { display: grid; gap: 1rem; }
   .pair { grid-template-columns: 1fr 1fr; }
-  .lanes { grid-template-columns: repeat(3, 1fr); }
-  .sheet { grid-template-columns: repeat(3, 1fr); }
+  .lanes, .sheet { grid-template-columns: repeat(3, 1fr); }
   img { width: 100%; height: auto; display: block; background: #ddd; }
   figure { margin: 0; }
   figcaption, .not, .mono { font-family: var(--mono); font-size: 0.78rem; }
-  .primary, .ghost {
-    margin-top: 1rem;
-    margin-right: 0.5rem;
-    padding: 0.7rem 1rem;
-    border: 1px solid var(--ink);
-  }
+  .primary, .ghost { margin-top: 1rem; margin-right: 0.5rem; padding: 0.7rem 1rem; border: 1px solid var(--ink); }
   .primary { background: var(--ink); color: var(--paper); }
   .ghost { background: transparent; }
   .jobs { list-style: none; padding: 0; display: grid; gap: 0.75rem; }
   .jobs li { border: 1px solid var(--line); padding: 0.75rem; }
   .pill { background: var(--blue); padding: 0.1rem 0.4rem; margin: 0 0.4rem; font-size: 0.75rem; }
-  .tile {
-    border: 1px solid var(--line);
-    background: transparent;
-    padding: 0;
-    text-align: left;
-  }
+  .tile { border: 1px solid var(--line); background: transparent; padding: 0; text-align: left; }
   .tile.sel { outline: 3px solid var(--coral); }
   .tile span, .tile code { display: block; padding: 0.35rem 0.5rem 0; }
   .payload { display: grid; grid-template-columns: 10rem 1fr; gap: 0.35rem 1rem; }
@@ -345,5 +318,6 @@
   textarea { width: 100%; font: inherit; background: white; border: 1px solid var(--line); }
   @media (max-width: 800px) {
     .pair, .lanes, .sheet { grid-template-columns: 1fr; }
+    .statusbar { display: block; }
   }
 </style>
