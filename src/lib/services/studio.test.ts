@@ -22,7 +22,9 @@ beforeEach(() => {
 
 describe("project state machine", () => {
   it("fails closed on illegal transitions", () => {
-    expect(() => assertTransition("draft", "exported")).toThrow(/Invalid project transition/);
+    expect(() => assertTransition("draft", "exported")).toThrow(
+      /Invalid project transition/,
+    );
   });
 
   it("creates isolated public replay sessions", () => {
@@ -57,13 +59,17 @@ describe("fixture provider contract", () => {
     });
     expect(submitted.job_id).toBeTruthy();
     expect((await provider.getJob(submitted.job_id)).status).toBe("queued");
-    expect((await provider.cancelJob(submitted.job_id)).status).toBe("cancelled");
+    expect((await provider.cancelJob(submitted.job_id)).status).toBe(
+      "cancelled",
+    );
   });
 });
 
 describe("approval and selection gates", () => {
   it("refuses generation without an approval", async () => {
-    await expect(submitApprovedDirections("replay-failure")).rejects.toThrow(/explicit approval/);
+    await expect(submitApprovedDirections("replay-failure")).rejects.toThrow(
+      /explicit approval/,
+    );
   });
 
   it("rejects selection before a completed review set", async () => {
@@ -92,7 +98,11 @@ describe("approval and selection gates", () => {
 describe("webhooks", () => {
   it("rejects unknown and nonterminal deliveries", () => {
     expect(() =>
-      ingestWebhook({ job_id: "does-not-exist", status: "completed", result: { urls: [] } }),
+      ingestWebhook({
+        job_id: "does-not-exist",
+        status: "completed",
+        result: { urls: [] },
+      }),
     ).toThrow(/Unknown job_id/);
     expect(() =>
       ingestWebhook({ job_id: "does-not-exist", status: "processing" }),
@@ -113,6 +123,8 @@ describe("webhooks", () => {
     expect(
       ingestWebhook({ job_id: jobId, status: "failed" as const }).duplicate,
     ).toBe(true);
-    expect(getSnapshot("replay-price-of-existence")?.jobs[0].providerStatus).toBe("completed");
+    expect(
+      getSnapshot("replay-price-of-existence")?.jobs[0].providerStatus,
+    ).toBe("completed");
   });
 });
