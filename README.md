@@ -2,133 +2,50 @@
 
 **Unofficial proof of work. Not affiliated with or endorsed by Krea.**
 
-An unofficial Krea-powered field workflow that turns a creative client's site, artwork, references, and constraints into controlled visual directions, a human-approved refinement, a proposal board, and a structured product field note.
+A small SvelteKit application that demonstrates the engineering around a controlled creative-production workflow: brief → lanes → explicit approval → asynchronous jobs → human selection → bounded refinement → proposal → operator field note.
 
-## 15–30 second loop
+## What the public demo is
 
-Brief + owned assets → three lanes → explicit approval → async jobs with exact Krea states → compare (no auto-rank) → proposal + field note.
+- /replay creates an isolated, ephemeral fixture session for each visitor.
+- /failure creates the same workflow with one scripted provider failure.
+- Fixture output is deterministic, locally authored SVG material labeled **REPLAY**.
+- Public routes do not execute paid Krea jobs.
+- The Krea REST provider and strict request contracts are implemented as integration evidence, but no public live runner or recorded live result is claimed.
 
-Open `/` for the animated loop, or `/replay` to run it.
+Run it: [krea-field-studio.vercel.app/replay](https://krea-field-studio.vercel.app/replay)
 
-![Brief → lanes → approval → jobs → compare → field note](docs/assets/loop.svg)
+## Safety and state guarantees
 
-Replay compare view (Playwright, no credentials):
-
-![Six-direction contact sheet in replay mode](docs/assets/replay-compare.png)
-
-## Demo
-
-| Mode                    | URL                                   | Credentials |
-| ----------------------- | ------------------------------------- | ----------- |
-| Replay (public default) | `/replay`                             | None        |
-| Mock failure            | `/failure`                            | None        |
-| Proposal board          | `/proposal/replay-price-of-existence` | None        |
-| Run trace               | `/trace/replay-price-of-existence`    | None        |
-| Live                    | server-only `KREA_API_KEY`            | Gated       |
-
-Live demo: [`https://krea-field-studio.vercel.app`](https://krea-field-studio.vercel.app)  
-Custom domain `field-studio.moises.tech` is attached on Vercel. Replay is the public path. Live spend is off until API balance is confirmed.
-
-## What this proves for Krea
-
-Creative Lead work compressed: understand a brief, design a production workflow, use Krea with explicit control, keep a human in the approval seat, make async states legible, package a client board, and return a reproducible product field note.
-
-## Status
-
-| Surface                                                                   | State                                                                                                 |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Replay golden path                                                        | **Live** in-repo                                                                                      |
-| Mock failure, cancel, duplicate webhook                                   | **Live**                                                                                              |
-| `KreaGenerationProvider` + documented Krea 2 Medium / Kling 2.5 contracts | **Implemented**, key + balance gated                                                                  |
-| Recorded live API run                                                     | **Planned** until [API balance](https://www.krea.ai/app/api/) is funded                               |
-| Postgres job ledger                                                       | Schema ready (`docker compose`); replay uses an in-memory ledger so the public demo needs no database |
-
-## Workflow
-
-```mermaid
-flowchart TD
-    A["Brief + owned assets"] --> B["Operator maps 3 creative lanes"]
-    B --> C["Human approves generation plan"]
-    C --> D["Six async jobs"]
-    D --> E["Compare + annotate"]
-    E --> F["Approve 1 direction"]
-    F --> G["Up to 3 refinements"]
-    G --> H["Optional motion study"]
-    H --> I["Proposal board + manifest"]
-    I --> J["Operator product field note"]
-```
-
-## Architecture
-
-```mermaid
-flowchart TD
-    A["SvelteKit UI"] --> B["Server routes + typed contracts"]
-    B --> C["Project + approval service"]
-    C --> D["GenerationProvider"]
-    D --> E["Krea API"]
-    D --> F["Fixture replay"]
-    E --> G["Webhook / polling"]
-    F --> G
-    G --> H["Job + event ledger"]
-    H --> A
-```
-
-Provider boundary: `submitImage`, `submitVideo`, `getJob`, `cancelJob`. UI never holds a provider object.
-
-Persisted job states match Krea: `backlogged`, `queued`, `scheduled`, `processing`, `sampling`, `intermediate-complete`, `completed`, `failed`, `cancelled`.
-
-## Failure behavior
-
-- `/failure` scripts one failed job.
-- Queued/processing jobs expose **Cancel**.
-- `POST /api/webhooks/krea` rejects unknown `job_id`.
-- Duplicate terminal deliveries are recorded and treated as no-ops.
-- Partial completion still yields a reviewable set.
-- Empty Krea API balance returns HTTP 402 with an explicit wallet message. Failed/cancelled jobs are not billed.
+- Generation requires an explicit plan approval.
+- A direction can only be selected after its job has completed and the review set is ready.
+- Refinement requires an approved, completed still.
+- Motion requires a second explicit approval and an approved, completed still.
+- Browser polling is serial at two-second intervals, stops on terminal states, and is cancelled when the component is destroyed.
+- Job states never move backward.
+- Webhooks accept known job IDs and terminal states only. Repeated or conflicting terminal deliveries are recorded as no-ops.
+- Replay state is memory-only and capped; it is not durable database persistence.
 
 ## Local setup
 
-Replay first:
+    npm install
+    npm run dev
 
-```bash
-npm install
-npm run dev
-```
+Open http://localhost:5173/replay. No credentials are required.
 
-Open `http://localhost:5173/replay`. No `.env` required.
+The server-only Krea provider expects KREA_API_KEY. It is intentionally unreachable from the public fixture routes until authentication, durable persistence, and a funded test run are added.
 
-Live second:
+Model contracts: [docs/MODEL_CONTRACTS.md](docs/MODEL_CONTRACTS.md). The checked-in Krea 2 Medium and Kling 2.5 schemas were copied from public OpenAPI on 2026-08-16 and should be revalidated before enabling live execution.
 
-```bash
-cp .env.example .env
-# set KREA_API_KEY from https://www.krea.ai/settings/api-tokens
-# confirm USD API balance at https://www.krea.ai/app/api/  (separate from app compute units)
-docker compose up -d   # optional Postgres
-npm run dev
-```
+## Rights and limitations
 
-Model contracts: [`docs/MODEL_CONTRACTS.md`](docs/MODEL_CONTRACTS.md). Schemas were copied from public OpenAPI on 2026-08-16 (Krea MCP was not connected in the authoring session).
-
-## Security, rights, privacy, limitations
-
-- Krea tokens stay server-side. They are never logged into fixtures or client bundles.
-- Artwork still: Moises Sanabria, _Price of Existence_, 2024, artist-owned documentation.
-- Site still: synthetic gallery drawing, not a real venue survey.
-- Replay outputs are labeled **REPLAY** fixtures, not a recorded Krea live run, until a funded run replaces them.
-- This tool is communication and creative previsualization. It does not claim CAD accuracy, structural feasibility, scale, or permitting.
-- No Krea endorsement is implied.
-
-## Visual asset index
-
-| File                                         | License / rights                                      |
-| -------------------------------------------- | ----------------------------------------------------- |
-| `static/fixtures/site-gallery.svg`           | Original synthetic drawing for this demo              |
-| `static/fixtures/out/*.svg`                  | Original replay boards, labeled REPLAY                |
-| Cloudinary `price_of_existence_wideshot.png` | Artist-owned; used with permission of Moises Sanabria |
+- Artwork still: Moises Sanabria, _Price of Existence_, 2024; artist-owned documentation.
+- Site still: synthetic gallery drawing, not a venue survey.
+- Replay outputs are original fixture boards, not Krea generations.
+- This is creative previsualization, not CAD, structural, scale, feasibility, or permitting evidence.
 
 ## Tests
 
-```bash
-npm test          # vitest: contracts, approval gate, webhook idempotency
-npm run test:e2e  # Playwright golden path
-```
+    npm test
+    npm run test:e2e
+
+Vitest covers request contracts, state gates, replay isolation, and webhook idempotency. Playwright exercises the complete replay path through field-note export plus reset behavior.
